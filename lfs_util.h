@@ -18,9 +18,47 @@
 #ifndef LFS_UTIL_H
 #define LFS_UTIL_H
 
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
+#include <string.h>
+
+#ifndef LFS_NO_MALLOC
+#include <stdlib.h>
+#endif
+#ifndef LFS_NO_ASSERT
+#include <assert.h>
+#endif
+#if !defined(LFS_NO_DEBUG) || !defined(LFS_NO_WARN) || !defined(LFS_NO_ERROR)
 #include <stdio.h>
+#endif
+
+
+// Logging functions, these may be replaced by system-specific
+// logging functions
+#ifndef LFS_NO_DEBUG
+#define LFS_DEBUG(fmt, ...) printf("lfs debug: " fmt "\n", __VA_ARGS__)
+#else
+#define LFS_DEBUG(fmt, ...)
+#endif
+
+#ifndef LFS_NO_WARN
+#define LFS_WARN(fmt, ...)  printf("lfs warn: " fmt "\n", __VA_ARGS__)
+#else
+#define LFS_WARN(fmt, ...)
+#endif
+
+#ifndef LFS_NO_ERROR
+#define LFS_ERROR(fmt, ...) printf("lfs error: " fmt "\n", __VA_ARGS__)
+#else
+#define LFS_ERROR(fmt, ...)
+#endif
+
+
+#ifndef LFS_NO_ASSERT
+#define LFS_ASSERT(test) assert(test)
+#else
+#define LFS_ASSERT(test)
+#endif
 
 
 // Builtin functions, these may be replaced by more
@@ -34,7 +72,7 @@ static inline uint32_t lfs_min(uint32_t a, uint32_t b) {
 }
 
 static inline uint32_t lfs_npw2(uint32_t a) {
-#if defined(__GNUC__) || defined(__CC_ARM)
+#if !defined(LFS_NO_INTRINSICS) && (defined(__GNUC__) || defined(__CC_ARM))
     return 32 - __builtin_clz(a-1);
 #else
     uint32_t r = 0;
@@ -48,7 +86,7 @@ static inline uint32_t lfs_npw2(uint32_t a) {
 }
 
 static inline uint32_t lfs_ctz(uint32_t a) {
-#if defined(__GNUC__)
+#if !defined(LFS_NO_INTRINSICS) && defined(__GNUC__)
     return __builtin_ctz(a);
 #else
     return lfs_npw2((a & -a) + 1) - 1;
@@ -56,7 +94,7 @@ static inline uint32_t lfs_ctz(uint32_t a) {
 }
 
 static inline uint32_t lfs_popc(uint32_t a) {
-#if defined(__GNUC__) || defined(__CC_ARM)
+#if !defined(LFS_NO_INTRINSICS) && (defined(__GNUC__) || defined(__CC_ARM))
     return __builtin_popcount(a);
 #else
     a = a - ((a >> 1) & 0x55555555);
@@ -69,15 +107,24 @@ static inline int lfs_scmp(uint32_t a, uint32_t b) {
     return (int)(unsigned)(a - b);
 }
 
+
 // CRC-32 with polynomial = 0x04c11db7
 void lfs_crc(uint32_t *crc, const void *buffer, size_t size);
 
 
-// Logging functions, these may be replaced by system-specific
-// logging functions
-#define LFS_DEBUG(fmt, ...) printf("lfs debug: " fmt "\n", __VA_ARGS__)
-#define LFS_WARN(fmt, ...)  printf("lfs warn: " fmt "\n", __VA_ARGS__)
-#define LFS_ERROR(fmt, ...) printf("lfs error: " fmt "\n", __VA_ARGS__)
+static inline void *lfs_malloc(size_t size) {
+#ifndef LFS_NO_MALLOC
+    return malloc(size);
+#else
+    return NULL;
+#endif
+}
+
+static inline void lfs_free(void *p) {
+#ifndef LFS_NO_MALLOC
+    free(p);
+#endif
+}
 
 
 #endif
